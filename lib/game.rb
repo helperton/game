@@ -44,7 +44,7 @@ class Game
       def initialize(player, input)
         @player = player
         @verb = input.split[0]
-        @subject = input.split[1]
+        @subject = input.split(" ", 2)[1]
         # Should move verbs to DB
         verbs = { 
                   "look" => 'look', 
@@ -52,7 +52,9 @@ class Game
                   "stat" => 'stat',
                   "st" => 'stat', 
                   "attack" => 'attack',
-                  "a" => 'attack' 
+                  "a" => 'attack',
+                  "/s" => 'say',
+                  "/say" => 'say'
                 }
 
         if verbs.key?(@verb)
@@ -70,12 +72,16 @@ class Game
         puts "Trying to look at: #{arg}"
       end
       
-      def stat
-        puts Database::Player.select("*").where(@player.id).first.inspect
+      def stat(void)
+        puts Database::Player.select("*").where(@player.attrs.id).first.inspect
       end
       
       def attack(thing)
         puts "Not working yet! Won't attack #{thing}"
+      end
+      
+      def say(stuff)
+        puts "#{@player.attrs.name} says: #{stuff}"
       end
     end
   end
