@@ -34,10 +34,14 @@ class Game
 
 
   class Player
-    attr_accessor :attrs
+    attr_accessor :attrs, :io
 
     def initialize(p_id=1)
       @attrs = Database::Player.select("*").where("id = #{p_id}").first
+    end
+
+    def io
+      @io
     end
 
     class Action
@@ -47,6 +51,8 @@ class Game
         @subject = input.split(" ", 2)[1]
         # Should move verbs to DB
         verbs = { 
+                  "quit" => 'quit', 
+                  "exit" => 'quit', 
                   "look" => 'look', 
                   "l" => 'look',
                   "stat" => 'stat',
@@ -65,11 +71,16 @@ class Game
           puts "Say what?"
         end
       end
+      
+      def quit(void)
+        puts 'Exiting...'
+        exit 0
+      end
 
       def look(arg)
-        puts Database::Room.select("description").where(@player.attrs.room).first.description
+        @player.io.puts Database::Room.select("description").where(@player.attrs.room).first.description
         # Have to detect presence of other objects here
-        puts "Trying to look at: #{arg}"
+        @player.io.puts "Trying to look at: #{arg}"
       end
       
       def stat(void)
