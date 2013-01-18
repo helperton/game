@@ -32,16 +32,19 @@ class Game
     end
   end
 
-
   class Player
-    attr_accessor :attrs, :io
+    attr_accessor :attrs, :io, :input, :output
 
-    def initialize(p_id=1)
-      @attrs = Database::Player.select("*").where("id = #{p_id}").first
+    def initialize(name)
+      @attrs = Database::Player.select("*").where("name = '#{name}'").first
     end
 
     def io
       @io
+    end
+
+    def input
+      @input
     end
 
     class Action
@@ -63,18 +66,18 @@ class Game
                   "/say" => 'say'
                 }
 
-        if verbs.key?(@verb)
+        if(verbs.key?(@verb))
           send(verbs[@verb],@subject)
-        elsif(@input == '')
-          nil
+        elsif(@input.nil?)
+          true 
         else
-          puts "Say what?"
+          @player.io.puts "Say what?"
         end
       end
-      
+
       def quit(void)
         puts 'Exiting...'
-        exit 0
+        @player.io.close()
       end
 
       def look(arg)
@@ -101,6 +104,28 @@ class Game
     def initialize()
       rooms = Database::Room.first
       #puts rooms.inspect
+    end
+  end
+
+  class Authorize
+    def initialize(*args)
+      @io = args[0]
+      @attrs = args[1]
+    end
+
+    def get_user
+      @io.print "Username: "
+      TelnetFunctions.handle_telnet(@io.gets.chomp.capitalize, @io)
+    end
+
+    def get_pass
+      @io.print "Password: "
+      if(TelnetFunctions.handle_telnet(@io.gets.chomp, @io) != @attrs.password)
+        @io.puts "Incorrect Password"
+        @io.close
+      else
+        @io.puts "Welcome!\n"
+      end
     end
   end
 end

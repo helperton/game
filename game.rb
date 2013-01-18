@@ -5,6 +5,8 @@ require 'logger'
 require './lib/game'
 require './lib/telnet_functions.rb'
 
+Game.new()
+
 class Server < GServer
   def initialize(*args)
     super(*args)
@@ -19,23 +21,25 @@ class Server < GServer
 
     #@@client_id += 1
     #my_client_id = @@client_id
-    
-    Game.new()
-    player = Game::Player.new()
-    player.io = io
 
     begin
+      attrs = Game::Database::Player.select("*").where("name = '#{Game::Authorize.new(io).get_user}'").first
+      Game::Authorize.new(io,attrs).get_pass
+
+      player = Game::Player.new(attrs.name)
+      player.io = io
+      player.input = TelnetFunctions.handle_telnet(player.io.gets.chomp, player.io)
+
       loop do
         player.io.print "Health: #{player.attrs.health}> " 
-        input = TelnetFunctions.handle_telnet(io.gets, player.io)
-        output = Game::Player::Action.new(player,input.chomp)
+        input = TelnetFunctions.handle_telnet(player.io.gets.chomp, player.io)
+        Game::Player::Action.new(player,input)
       end
     rescue StandardError => err
       log.fatal("Caught Exception: #{err.message}")
       log.fatal(err.backtrace)
     end
   end
-
 end
 
 server = Server.new(7777,"0.0.0.0")
