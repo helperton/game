@@ -7,6 +7,8 @@ require './lib/telnet_functions.rb'
 
 Game.new()
 
+puts Game::World.new().rooms.inspect
+
 class Server < GServer
   def initialize(*args)
     super(*args)

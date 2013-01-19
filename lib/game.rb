@@ -8,14 +8,15 @@ class Game
     ActiveRecord::Base.establish_connection(dbconfig)
     #ActiveRecord::Base.logger = Logger.new(STDERR)
     
-    players2location = {}
   end
   
   class Database 
     class Player < ActiveRecord::Base
+      attr_accessible :name, :password, :description, :room, :health
     end
 
     class Room < ActiveRecord::Base
+      attr_accessible :x, :y, :z, :description
     end
   end
 
@@ -23,12 +24,16 @@ class Game
     def initialize()
     end
 
+    def all
+      Database::Room.find(:all)
+    end
+
     def id2coords(id)
-        coords = Database::Room.select("x,y,z").where("id = #{id}").find(1)
+      coords = Database::Room.select("x,y,z").where("id = #{id}").find(1)
     end
 
     def coords2id(x,y,z)
-        coords = Database::Room.select("id").where("x = '#{x}' and y = '#{y} and z = '#{z}'").find(1)
+      coords = Database::Room.select("id").where("x = '#{x}' and y = '#{y} and z = '#{z}'").find(1)
     end
   end
 
@@ -68,8 +73,8 @@ class Game
 
         if(verbs.key?(@verb))
           send(verbs[@verb],@subject)
-        elsif(@input.nil?)
-          true 
+        elsif(@verb.nil?)
+          return
         else
           @player.io.puts "Say what?"
         end
@@ -87,23 +92,26 @@ class Game
       end
       
       def stat(void)
-        puts Database::Player.select("*").where(@player.attrs.id).first.inspect
+        @player.io.puts Database::Player.select("*").where(@player.attrs.id).first.inspect
       end
       
       def attack(thing)
-        puts "Not working yet! Won't attack #{thing}"
+        @player.io.puts "Not working yet! Won't attack #{thing}"
       end
       
       def say(stuff)
-        puts "#{@player.attrs.name} says: #{stuff}"
+        @player.io.puts "#{@player.attrs.name} says: #{stuff}"
       end
     end
   end
 
   class World
+    attr_reader :rooms
+
     def initialize()
-      rooms = Database::Room.first
+      @rooms = Database::Room.all
       #puts rooms.inspect
+      players2location = {}
     end
   end
 
