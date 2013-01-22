@@ -1,17 +1,19 @@
 #!/usr/bin/env ruby
 
-require 'gserver'
-require './lib/game'
-require './lib/telnet_func.rb'
+require 'logger'
+require_relative 'lib/telnet_server'
+require_relative 'lib/game'
 
-Game.new()
 
-puts Game::World.new().rooms.inspect
-
-server = Game::Server.new(7777,"0.0.0.0")
-server.audit = 1
-server.debug = 1
-server.start
-server.join
-
-puts "Server has been terminated"
+begin
+  Game.new()
+  EM::run {
+    EM::start_server("0.0.0.0", 7777, TelnetServer)
+    puts "Telnet Server Started"
+  }
+rescue StandardError => err
+  log = Logger.new(STDOUT)
+  log.level = Logger::FATAL
+  log.fatal("Caught Exception: #{err.message}")
+  log.fatal(err.backtrace)
+end

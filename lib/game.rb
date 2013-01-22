@@ -1,6 +1,7 @@
 require 'active_record'
 require 'yaml'
 require 'logger'
+require_relative 'models.rb'
 
 class Game
   def initialize()
@@ -8,52 +9,6 @@ class Game
     ActiveRecord::Base.establish_connection(dbconfig)
     #ActiveRecord::Base.logger = Logger.new(STDERR)
     
-  end
-
-  class Server < GServer
-    def initialize(*args)
-      super(*args)
-
-      @@client_id = 0
-      @@chat = []
-    end
-
-    def serve(io)
-      log = Logger.new(STDOUT)
-      log.level = Logger::FATAL
-
-      #@@client_id += 1
-      #my_client_id = @@client_id
-
-      begin
-        #attrs = Game::Database::Player.select("*").where("name = '#{Game::Authorize.new(io).get_user}'").first
-        Game::Auth.new(io).login
-
-        player = Game::Player.new(attrs.name)
-        player.io = io
-        player.input = TelnetFunc.input(player.io.gets.chomp, player.io)
-
-        loop do
-          player.io.print "Health: #{player.attrs.health}> "
-          input = TelnetFunc.input(player.io.gets.chomp, player.io)
-          Game::Player::Action.new(player,input)
-        end
-
-      rescue StandardError => err
-        log.fatal("Caught Exception: #{err.message}")
-        log.fatal(err.backtrace)
-      end
-    end
-  end
-
-  class Database 
-    class Player < ActiveRecord::Base
-      #attr_accessible :name, :password, :description, :room, :health
-    end
-
-    class Room < ActiveRecord::Base
-      #attr_accessible :x, :y, :z, :description
-    end
   end
 
   class Room
@@ -153,38 +108,60 @@ class Game
   end
 
   class Auth
+    attr_reader :name, :pass
+
     def initialize(io)
       @io = io
+      @name = nil
+      @pass = nil
     end
 
     def login
       @io.puts "Type 'new' for new player"
       @io.print "Username: "
-      user = TelnetFunc.input(@io.gets.chomp.downcase, @io)
+      @name = TelnetFunc.input(@io.gets.chomp.downcase, @io)
       
-      if(user == "new")
+      if(@name == "new")
         new!
       else
         @io.print "Password: "
-        pass = TelnetFunc.input(@io.gets.chomp, @io)
-        check(user,pass)
+        @pass = TelnetFunc.input(@io.gets.chomp, @io)
+        check_creds
       end
     end
 
     def new!
+      l = true
       begin
         @io.print "Desired name: "
-        name = TelnetFunc.input(@io.gets.chomp.downcase, @io)
-      end while(Game::Player.new(name).attrs != nil and @io.puts "Name #{name} unavailable.")
-      @io.print "password: "
-      pass = TelnetFunc.input(@io.gets.chomp, @io)
-      Database::Player.new(:name => name, :password => pass, :room => 0, :health => 0).save
+        @name = TelnetFunc.input(@io.gets.chomp.downcase, @io)
+        if(@name.length < 3)
+          @io.puts "Name must be 3 characters or greater."
+          next
+        end
+        if(%r/[^a-zA-Z]/ =~ @name)
+          @io.puts "Name must not contain non-alpha characters."
+          next
+        end
+        if(Game::Player.new(name).attrs.nil?)
+          l = false
+        else
+          @io.puts "Name: #{name.capitalize} is unavailable."
+        end
+      end while(l)
+      @io.puts "Name #{name.capitalize} available."
+      @io.print "#{name.capitalize}'s password: "
+      #TelnetFunc.echo_off(io)
+      @pass = TelnetFunc.input(@io.gets.chomp, @io)
+      Database::Player.new(:name => @name, :password => @pass, :room => 0, :health => 0).save
       @io.puts "Player created!" 
+      @name
     end
 
-    def check(user,pass)
-      if(Game::Database::Player.new(user).password == pass)
+    def check_creds
+      if(Game::Player.new(name).attrs.password == @pass)
         @io.puts "Welcome!"
+        @name
       else
         @io.puts "Wrongo!"
         @io.close()
